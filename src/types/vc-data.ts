@@ -4,6 +4,7 @@ export interface Person {
   name: string;
   currentRole: string;
   currentFund: string;
+  currentSpecificFund?: string; // Specific fund within the VC firm
   previousRoles: PreviousRole[];
   education: Education[];
   skills: string[];
@@ -14,6 +15,9 @@ export interface Person {
   influence: number; // 0-100 score
   tenure: number; // years at current fund
   investedCompanies: string[]; // Companies they've invested in
+  lastContactedBy?: string;
+  lastContactDate?: string;
+  connectionStrength?: string;
 }
 
 export interface PreviousRole {
@@ -21,6 +25,8 @@ export interface PreviousRole {
   role: string;
   startYear: number;
   endYear: number;
+  startMonth?: number;
+  endMonth?: number;
   isFund: boolean;
 }
 
@@ -29,6 +35,9 @@ export interface Education {
   degree: string;
   field: string;
   graduationYear: number;
+  startYear?: number;
+  startMonth?: number;
+  endMonth?: number;
 }
 
 export interface VCFund {
@@ -46,6 +55,21 @@ export interface VCFund {
   pastTeam: string[]; // Person IDs
   growthRate: number; // team growth % last 2 years
   influenceScore: number; // 0-100
+  specificFunds: SpecificFund[]; // Individual funds within the firm
+}
+
+export interface SpecificFund {
+  id: string;
+  name: string;
+  size: string;
+  vintage: number; // Year of fund
+  status: 'Fundraising' | 'Investing' | 'Harvesting' | 'Closed';
+  moic?: number; // Multiple of Invested Capital
+  irr?: number; // Internal Rate of Return
+  dpi?: number; // Distributions to Paid-In
+  tvpi?: number; // Total Value to Paid-In
+  investments: string[]; // Company names
+  teamMembers: string[]; // Person IDs
 }
 
 export interface Connection {
@@ -66,6 +90,7 @@ export interface FilterOptions {
   languages: string[];
   skills: string[];
   investedCompanies: string[];
+  specificFunds: string[];
   minInfluence: number;
   minTenure: number;
 }

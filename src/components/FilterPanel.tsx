@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { FilterOptions, Person, VCFund } from '../types/vc-data';
 import { Card } from '@/components/ui/card';
@@ -70,6 +71,22 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     return Array.from(companies).slice(0, 15); // Limit to 15 most common
   }, [people]);
 
+  const specificFundOptions = useMemo(() => {
+    if (!funds || funds.length === 0) return [];
+    
+    const specificFunds = new Set<string>();
+    funds.forEach(fund => {
+      if (fund.specificFunds) {
+        fund.specificFunds.forEach(sf => {
+          if (sf.name) {
+            specificFunds.add(sf.name);
+          }
+        });
+      }
+    });
+    return Array.from(specificFunds);
+  }, [funds]);
+
   const GEOGRAPHY_OPTIONS = [
     'United States', 'Europe', 'Asia', 'Latin America', 'Middle East', 'Africa'
   ];
@@ -105,6 +122,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       filters.languages.length > 0 ||
       filters.skills.length > 0 ||
       filters.investedCompanies.length > 0 ||
+      filters.specificFunds.length > 0 ||
       filters.minInfluence > 0 ||
       filters.minTenure > 0
     );
@@ -176,6 +194,25 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 onClick={() => toggleArrayFilter('investedCompanies', company)}
               >
                 {company.length > 20 ? company.substring(0, 20) + '...' : company}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Specific Funds */}
+      {specificFundOptions.length > 0 && (
+        <div className="mb-6">
+          <h3 className="font-medium mb-3 text-slate-900">Specific Funds</h3>
+          <div className="flex flex-wrap gap-2">
+            {specificFundOptions.map(fund => (
+              <Badge
+                key={fund}
+                variant={filters.specificFunds.includes(fund) ? "default" : "outline"}
+                className="cursor-pointer hover:bg-purple-100 text-xs"
+                onClick={() => toggleArrayFilter('specificFunds', fund)}
+              >
+                {fund.length > 25 ? fund.substring(0, 25) + '...' : fund}
               </Badge>
             ))}
           </div>

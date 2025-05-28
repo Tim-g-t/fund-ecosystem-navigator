@@ -40,6 +40,7 @@ const Index = () => {
     languages: [],
     skills: [],
     investedCompanies: [],
+    specificFunds: [],
     minInfluence: 0,
     minTenure: 0
   });
@@ -73,6 +74,14 @@ const Index = () => {
           filters.investedCompanies.includes(company)
         );
         if (!hasInvestedCompany) return false;
+      }
+
+      // Specific funds filter
+      if (filters.specificFunds.length > 0) {
+        if (!person.currentSpecificFund || 
+            !filters.specificFunds.includes(person.currentSpecificFund)) {
+          return false;
+        }
       }
 
       // Skills filter
@@ -119,6 +128,14 @@ const Index = () => {
         if (!hasSector) return false;
       }
 
+      // Specific funds filter
+      if (filters.specificFunds.length > 0) {
+        const hasSpecificFund = fund.specificFunds?.some(sf => 
+          filters.specificFunds.includes(sf.name)
+        );
+        if (!hasSpecificFund) return false;
+      }
+
       // Fund size filter
       if (filters.fundSize.length > 0) {
         // This would need more sophisticated matching in a real app
@@ -159,6 +176,7 @@ const Index = () => {
       languages: [],
       skills: [],
       investedCompanies: [],
+      specificFunds: [],
       minInfluence: 0,
       minTenure: 0
     });
