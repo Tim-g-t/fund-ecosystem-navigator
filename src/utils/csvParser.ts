@@ -1,3 +1,4 @@
+
 import { Person, VCFund, PreviousRole, Education } from '../types/vc-data';
 
 interface CSVRow {
@@ -16,6 +17,7 @@ export const parseCSVData = (csvData: CSVRow[]): { people: Person[], funds: VCFu
     const previousRoles: PreviousRole[] = [];
     let currentFund = '';
     let currentRole = '';
+    let currentSpecificFund = '';
     
     // Parse up to 20 job experiences
     for (let i = 1; i <= 20; i++) {
@@ -23,6 +25,8 @@ export const parseCSVData = (csvData: CSVRow[]): { people: Person[], funds: VCFu
       const position = row[`jobExperience_${i}_positions_1_function`];
       const startYear = parseInt(row[`jobExperience_${i}_positions_1_tenure_start_year`]) || 0;
       const endYear = parseInt(row[`jobExperience_${i}_positions_1_tenure_end_year`]) || new Date().getFullYear();
+      const startMonth = parseInt(row[`jobExperience_${i}_positions_1_tenure_start_month`]) || undefined;
+      const endMonth = parseInt(row[`jobExperience_${i}_positions_1_tenure_end_month`]) || undefined;
       
       if (companyName && position) {
         // Determine if it's a fund (simplified logic - you may want to enhance this)
@@ -35,12 +39,16 @@ export const parseCSVData = (csvData: CSVRow[]): { people: Person[], funds: VCFu
         if (i === 1 && isFund) {
           currentFund = companyName;
           currentRole = position;
+          // Create a default specific fund name
+          currentSpecificFund = `${companyName} Fund I`;
         } else {
           previousRoles.push({
             company: companyName,
             role: position,
             startYear,
             endYear,
+            startMonth,
+            endMonth,
             isFund
           });
         }
@@ -61,7 +69,18 @@ export const parseCSVData = (csvData: CSVRow[]): { people: Person[], funds: VCFu
             currentTeam: [],
             pastTeam: [],
             growthRate: 0,
-            influenceScore: 50
+            influenceScore: 50,
+            specificFunds: [
+              {
+                id: `${companyName.toLowerCase().replace(/\s+/g, '-')}-fund-1`,
+                name: `${companyName} Fund I`,
+                size: 'Unknown',
+                vintage: 2020, // Default vintage
+                status: 'Investing',
+                investments: [],
+                teamMembers: []
+              }
+            ]
           });
         }
       }
@@ -73,13 +92,19 @@ export const parseCSVData = (csvData: CSVRow[]): { people: Person[], funds: VCFu
       const institution = row[`education_${i}_company_name`];
       const subject = row[`education_${i}_subject`];
       const graduationYear = parseInt(row[`education_${i}_tenure_end_year`]) || 0;
+      const startYear = parseInt(row[`education_${i}_tenure_start_year`]) || undefined;
+      const startMonth = parseInt(row[`education_${i}_tenure_start_month`]) || undefined;
+      const endMonth = parseInt(row[`education_${i}_tenure_end_month`]) || undefined;
       
       if (institution) {
         education.push({
           institution,
           degree: 'Degree', // Could be enhanced
           field: subject || 'Unknown',
-          graduationYear
+          graduationYear,
+          startYear,
+          startMonth,
+          endMonth
         });
       }
     }
@@ -128,6 +153,7 @@ export const parseCSVData = (csvData: CSVRow[]): { people: Person[], funds: VCFu
       name: `${row.firstName} ${row.lastName}`.trim(),
       currentRole: currentRole || row.headline || 'Professional',
       currentFund: currentFund || 'Unknown',
+      currentSpecificFund: currentSpecificFund || undefined,
       previousRoles,
       education,
       skills,
@@ -137,7 +163,10 @@ export const parseCSVData = (csvData: CSVRow[]): { people: Person[], funds: VCFu
       connections: [], // Will be populated based on shared experiences
       influence: Math.round(influence),
       tenure: Math.max(0, tenure),
-      investedCompanies
+      investedCompanies,
+      lastContactedBy: row['Last Contacted by'] || 'Lukas Bennemann',
+      lastContactDate: row['Last contact time'] || undefined,
+      connectionStrength: row['Connection Strength'] || 'Good'
     };
 
     people.push(person);
@@ -147,6 +176,11 @@ export const parseCSVData = (csvData: CSVRow[]): { people: Person[], funds: VCFu
       const fund = fundMap.get(currentFund)!;
       fund.currentTeam.push(person.id);
       fund.teamSize = fund.currentTeam.length;
+      
+      // Add person to the specific fund as well
+      if (fund.specificFunds.length > 0) {
+        fund.specificFunds[0].teamMembers.push(person.id);
+      }
     }
   });
 
