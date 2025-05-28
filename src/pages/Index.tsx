@@ -1,12 +1,12 @@
-
 import React, { useState, useMemo } from 'react';
 import { NetworkGraph } from '../components/NetworkGraph';
 import { FilterPanel } from '../components/FilterPanel';
 import { DetailPanel } from '../components/DetailPanel';
 import { StatisticsPanel } from '../components/StatisticsPanel';
 import { SearchBar } from '../components/SearchBar';
+import { CSVUploader } from '../components/CSVUploader';
 import { mockPeople, mockFunds, mockConnections } from '../data/mock-data';
-import { FilterOptions } from '../types/vc-data';
+import { FilterOptions, Person, VCFund } from '../types/vc-data';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,13 +18,18 @@ import {
   Info, 
   Maximize2,
   Download,
-  Settings
+  Settings,
+  Database
 } from 'lucide-react';
 
 const Index = () => {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [selectedNodeType, setSelectedNodeType] = useState<'fund' | 'person' | null>(null);
   const [activeTab, setActiveTab] = useState('network');
+  const [useRealData, setUseRealData] = useState(false);
+  const [realPeople, setRealPeople] = useState<Person[]>([]);
+  const [realFunds, setRealFunds] = useState<VCFund[]>([]);
+  
   const [filters, setFilters] = useState<FilterOptions>({
     education: [],
     previousCompanies: [],
@@ -37,9 +42,13 @@ const Index = () => {
     minTenure: 0
   });
 
+  // Use real data if available, otherwise use mock data
+  const currentPeople = useRealData ? realPeople : mockPeople;
+  const currentFunds = useRealData ? realFunds : mockFunds;
+
   // Apply filters to data
   const filteredPeople = useMemo(() => {
-    return mockPeople.filter(person => {
+    return currentPeople.filter(person => {
       // Education filter
       if (filters.education.length > 0) {
         const hasEducation = person.education.some(edu => 
@@ -80,10 +89,10 @@ const Index = () => {
 
       return true;
     });
-  }, [filters]);
+  }, [filters, currentPeople]);
 
   const filteredFunds = useMemo(() => {
-    return mockFunds.filter(fund => {
+    return currentFunds.filter(fund => {
       // Geography filter
       if (filters.geography.length > 0) {
         const hasGeography = fund.geography.some(geo => 
@@ -117,7 +126,7 @@ const Index = () => {
 
       return true;
     });
-  }, [filters]);
+  }, [filters, currentFunds]);
 
   const handleNodeSelect = (nodeId: string, nodeType: 'fund' | 'person') => {
     setSelectedNode(nodeId);
@@ -144,11 +153,55 @@ const Index = () => {
     });
   };
 
+  const handleDataLoaded = (data: { people: Person[], funds: VCFund[] }) => {
+    setRealPeople(data.people);
+    setRealFunds(data.funds);
+    setUseRealData(true);
+    console.log('Real data loaded:', data);
+  };
+
   const hasActiveFilters = useMemo(() => {
     return Object.values(filters).some(filter => 
       Array.isArray(filter) ? filter.length > 0 : filter > 0
     );
   }, [filters]);
+
+  // Show CSV uploader if no real data is loaded
+  if (!useRealData && realPeople.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+        <div className="bg-white border-b border-slate-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">
+                VC Intelligence Platform
+              </h1>
+              <p className="text-slate-600">
+                Upload your data to explore the venture capital ecosystem
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setUseRealData(false)}
+              >
+                <Database className="h-4 w-4 mr-1" />
+                Use Demo Data
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center min-h-[calc(100vh-140px)] p-6">
+          <div className="w-full max-w-2xl">
+            <CSVUploader onDataLoaded={handleDataLoaded} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
@@ -160,11 +213,18 @@ const Index = () => {
               VC Intelligence Platform
             </h1>
             <p className="text-slate-600">
-              Explore the venture capital ecosystem through data and relationships
+              {useRealData ? 'Your real data' : 'Demo data'} • Explore the venture capital ecosystem through data and relationships
             </p>
           </div>
           
           <div className="flex items-center gap-4">
+            {useRealData && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <Database className="h-3 w-3" />
+                Real Data Active
+              </Badge>
+            )}
+            
             {hasActiveFilters && (
               <Badge variant="secondary" className="flex items-center gap-1">
                 <Filter className="h-3 w-3" />
@@ -181,6 +241,16 @@ const Index = () => {
                 <Settings className="h-4 w-4 mr-1" />
                 Settings
               </Button>
+              {useRealData && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setUseRealData(false)}
+                >
+                  <Database className="h-4 w-4 mr-1" />
+                  Switch to Demo
+                </Button>
+              )}
             </div>
           </div>
         </div>
