@@ -1,4 +1,3 @@
-
 import { Person, VCFund, Connection } from '../types/vc-data';
 
 export const mockPeople: Person[] = [
@@ -21,7 +20,8 @@ export const mockPeople: Person[] = [
     linkedinUrl: 'https://linkedin.com/in/sarahchen',
     connections: ['2', '3', '4'],
     influence: 89,
-    tenure: 3
+    tenure: 3,
+    investedCompanies: ['Stripe', 'Airbnb', 'Coinbase']
   },
   {
     id: '2',
@@ -42,7 +42,8 @@ export const mockPeople: Person[] = [
     linkedinUrl: 'https://linkedin.com/in/marcusrodriguez',
     connections: ['1', '3', '5'],
     influence: 94,
-    tenure: 5
+    tenure: 5,
+    investedCompanies: ['WhatsApp', 'Instagram', 'YouTube']
   },
   {
     id: '3',
@@ -63,7 +64,8 @@ export const mockPeople: Person[] = [
     linkedinUrl: 'https://linkedin.com/in/elenavolkova',
     connections: ['1', '2', '4'],
     influence: 76,
-    tenure: 2
+    tenure: 2,
+    investedCompanies: ['Revolut', 'Skype', 'Adyen']
   },
   {
     id: '4',
@@ -84,7 +86,8 @@ export const mockPeople: Person[] = [
     linkedinUrl: 'https://linkedin.com/in/jamespark',
     connections: ['1', '3', '5'],
     influence: 82,
-    tenure: 3
+    tenure: 3,
+    investedCompanies: ['Shopify', 'Zoom', 'Twilio']
   },
   {
     id: '5',
@@ -105,7 +108,8 @@ export const mockPeople: Person[] = [
     linkedinUrl: 'https://linkedin.com/in/amandafoster',
     connections: ['2', '4'],
     influence: 91,
-    tenure: 2
+    tenure: 2,
+    investedCompanies: ['Snapchat', 'Discord', 'Figma']
   }
 ];
 

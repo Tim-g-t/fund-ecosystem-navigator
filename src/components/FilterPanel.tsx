@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { FilterOptions, Person, VCFund } from '../types/vc-data';
 import { Card } from '@/components/ui/card';
@@ -22,39 +21,51 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   people,
   funds
 }) => {
-  // Generate dynamic filter options from real data
+  // Generate dynamic filter options from real data with safety checks
   const educationOptions = useMemo(() => {
+    if (!people || people.length === 0) return [];
+    
     const institutions = new Set<string>();
     people.forEach(person => {
-      person.education.forEach(edu => {
-        if (edu.institution && edu.institution !== 'Unknown') {
-          institutions.add(edu.institution);
-        }
-      });
+      if (person.education) {
+        person.education.forEach(edu => {
+          if (edu.institution && edu.institution !== 'Unknown') {
+            institutions.add(edu.institution);
+          }
+        });
+      }
     });
     return Array.from(institutions).slice(0, 20); // Limit to 20 most common
   }, [people]);
 
   const companyOptions = useMemo(() => {
+    if (!people || people.length === 0) return [];
+    
     const companies = new Set<string>();
     people.forEach(person => {
-      person.previousRoles.forEach(role => {
-        if (role.company && role.company !== 'Unknown') {
-          companies.add(role.company);
-        }
-      });
+      if (person.previousRoles) {
+        person.previousRoles.forEach(role => {
+          if (role.company && role.company !== 'Unknown') {
+            companies.add(role.company);
+          }
+        });
+      }
     });
     return Array.from(companies).slice(0, 20); // Limit to 20 most common
   }, [people]);
 
   const investedCompanyOptions = useMemo(() => {
+    if (!people || people.length === 0) return [];
+    
     const companies = new Set<string>();
     people.forEach(person => {
-      person.investedCompanies.forEach(company => {
-        if (company && company !== 'Unknown') {
-          companies.add(company);
-        }
-      });
+      if (person.investedCompanies) {
+        person.investedCompanies.forEach(company => {
+          if (company && company !== 'Unknown') {
+            companies.add(company);
+          }
+        });
+      }
     });
     return Array.from(companies).slice(0, 15); // Limit to 15 most common
   }, [people]);
