@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Person, VCFund } from '../types/vc-data';
 import { Card } from '@/components/ui/card';
@@ -7,6 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import { Timeline } from './Timeline';
 import { ConnectionTracker } from './ConnectionTracker';
 import { CompanyDetailView } from './CompanyDetailView';
+import { EducationDetailView } from './EducationDetailView';
+import { SpecificFundDetailView } from './SpecificFundDetailView';
 import { 
   ExternalLink, 
   MapPin, 
@@ -17,7 +20,8 @@ import {
   Briefcase,
   Globe,
   TrendingUp,
-  Star
+  Star,
+  ArrowLeft
 } from 'lucide-react';
 
 interface DetailPanelProps {
@@ -28,6 +32,8 @@ interface DetailPanelProps {
   onClose: () => void;
 }
 
+type ViewState = 'main' | 'company' | 'education' | 'specificFund' | 'person';
+
 export const DetailPanel: React.FC<DetailPanelProps> = ({
   selectedNode,
   nodeType,
@@ -35,26 +41,38 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
   funds,
   onClose
 }) => {
+  const [viewState, setViewState] = useState<ViewState>('main');
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
-  const [timelineView, setTimelineView] = useState<'education' | 'experience' | null>(null);
+  const [selectedEducation, setSelectedEducation] = useState<string | null>(null);
+  const [selectedSpecificFund, setSelectedSpecificFund] = useState<any>(null);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
 
-  if (selectedCompany) {
+  const resetView = () => {
+    setViewState('main');
+    setSelectedCompany(null);
+    setSelectedEducation(null);
+    setSelectedSpecificFund(null);
+    setSelectedPersonId(null);
+  };
+
+  if (viewState === 'company' && selectedCompany) {
     const companyEmployees = people
       .filter(person => 
         person.previousRoles.some(role => role.company === selectedCompany) ||
-        person.currentRole.includes(selectedCompany)
+        person.currentFund === selectedCompany
       )
       .map(person => {
         const role = person.previousRoles.find(r => r.company === selectedCompany);
+        const isCurrent = person.currentFund === selectedCompany;
         return {
           id: person.id,
           name: person.name,
-          role: role?.role || person.currentRole,
-          startYear: role?.startYear || new Date().getFullYear(),
-          endYear: role?.endYear,
+          role: isCurrent ? person.currentRole : (role?.role || 'Unknown'),
+          startYear: isCurrent ? (new Date().getFullYear() - person.tenure) : (role?.startYear || 0),
+          endYear: isCurrent ? undefined : role?.endYear,
           startMonth: role?.startMonth,
           endMonth: role?.endMonth,
-          current: !role?.endYear
+          current: isCurrent || !role?.endYear
         };
       });
 
@@ -63,13 +81,83 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
         companyName={selectedCompany}
         employees={companyEmployees}
         people={people}
-        onClose={() => setSelectedCompany(null)}
+        onClose={resetView}
         onPersonClick={(personId) => {
-          setSelectedCompany(null);
-          // Handle person selection
+          setSelectedPersonId(personId);
+          setViewState('person');
         }}
       />
     );
+  }
+
+  if (viewState === 'education' && selectedEducation) {
+    return (
+      <EducationDetailView
+        institutionName={selectedEducation}
+        people={people}
+        onClose={resetView}
+        onPersonClick={(personId) => {
+          setSelectedPersonId(personId);
+          setViewState('person');
+        }}
+      />
+    );
+  }
+
+  if (viewState === 'specificFund' && selectedSpecificFund) {
+    return (
+      <SpecificFundDetailView
+        specificFund={selectedSpecificFund}
+        people={people}
+        onClose={resetView}
+        onPersonClick={(personId) => {
+          setSelectedPersonId(personId);
+          setViewState('person');
+        }}
+      />
+    );
+  }
+
+  if (viewState === 'person' && selectedPersonId) {
+    const person = people.find(p => p.id === selectedPersonId);
+    if (person) {
+      return (
+        <div className="p-6 h-full overflow-y-auto">
+          <div className="flex items-center gap-2 mb-4">
+            <Button variant="ghost" size="sm" onClick={resetView}>
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          </div>
+          
+          <Card className="p-6">
+            <h2 className="text-xl font-bold mb-2">{person.name}</h2>
+            <p className="text-slate-600 mb-1">{person.currentRole}</p>
+            <p className="text-blue-600 font-medium">{person.currentFund}</p>
+            
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <div className="bg-purple-50 p-3 rounded-lg">
+                <div className="text-sm text-purple-600">Influence</div>
+                <div className="text-xl font-bold text-purple-700">{person.influence}</div>
+              </div>
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <div className="text-sm text-blue-600">Tenure</div>
+                <div className="text-xl font-bold text-blue-700">{person.tenure} years</div>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <h3 className="font-semibold mb-2">Contact Info</h3>
+              <div className="text-sm text-slate-600">
+                <div>Last contacted by: {person.lastContactedBy}</div>
+                <div>Connection strength: {person.connectionStrength}</div>
+                {person.lastContactDate && <div>Last contact: {person.lastContactDate}</div>}
+              </div>
+            </div>
+          </Card>
+        </div>
+      );
+    }
   }
 
   if (!selectedNode || !nodeType) {
@@ -89,6 +177,26 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
 
     const teamMembers = people.filter(p => fund.currentTeam.includes(p.id));
     const pastMembers = people.filter(p => fund.pastTeam.includes(p.id));
+
+    const handleEducationClick = (institution: string) => {
+      setSelectedEducation(institution);
+      setViewState('education');
+    };
+
+    const handleCompanyClick = (company: string) => {
+      setSelectedCompany(company);
+      setViewState('company');
+    };
+
+    const handleSpecificFundClick = (specificFund: any) => {
+      setSelectedSpecificFund(specificFund);
+      setViewState('specificFund');
+    };
+
+    const handlePersonClick = (personId: string) => {
+      setSelectedPersonId(personId);
+      setViewState('person');
+    };
 
     return (
       <Card className="p-6 h-full overflow-y-auto">
@@ -144,16 +252,20 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
           </div>
         </div>
 
-        {/* Specific Funds */}
+        {/* Specific Funds - Now Clickable */}
         {fund.specificFunds && fund.specificFunds.length > 0 && (
           <div className="mb-6">
             <h3 className="font-semibold mb-3">Portfolio Funds</h3>
             <div className="space-y-3">
               {fund.specificFunds.map(specificFund => (
-                <div key={specificFund.id} className="p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100">
+                <div 
+                  key={specificFund.id} 
+                  className="p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors"
+                  onClick={() => handleSpecificFundClick(specificFund)}
+                >
                   <div className="flex justify-between items-start">
                     <div>
-                      <div className="font-medium">{specificFund.name}</div>
+                      <div className="font-medium text-blue-600 hover:text-blue-700">{specificFund.name}</div>
                       <div className="text-sm text-slate-600">{specificFund.size} • {specificFund.vintage}</div>
                     </div>
                     <Badge variant="outline">{specificFund.status}</Badge>
@@ -193,26 +305,20 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
           </div>
         </div>
 
-        {/* Investment Stages */}
-        <div className="mb-6">
-          <h3 className="font-semibold mb-2">Investment Stages</h3>
-          <div className="flex flex-wrap gap-2">
-            {fund.stage.map(stage => (
-              <Badge key={stage} variant="outline">{stage}</Badge>
-            ))}
-          </div>
-        </div>
-
         <Separator className="my-6" />
 
-        {/* Current Team */}
+        {/* Current Team - Now Clickable */}
         <div className="mb-6">
           <h3 className="font-semibold mb-3">Current Team ({teamMembers.length})</h3>
           <div className="space-y-3">
             {teamMembers.map(member => (
-              <div key={member.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100">
+              <div 
+                key={member.id} 
+                className="flex items-center justify-between p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors"
+                onClick={() => handlePersonClick(member.id)}
+              >
                 <div>
-                  <div className="font-medium">{member.name}</div>
+                  <div className="font-medium text-blue-600 hover:text-blue-700">{member.name}</div>
                   <div className="text-sm text-slate-600">{member.currentRole}</div>
                   {member.currentSpecificFund && (
                     <div className="text-xs text-slate-500">{member.currentSpecificFund}</div>
@@ -237,16 +343,16 @@ export const DetailPanel: React.FC<DetailPanelProps> = ({
     const currentFund = funds.find(f => f.id === person.currentFund);
 
     const handleEducationClick = (institution: string) => {
-      setTimelineView('education');
-      // Additional logic for showing education timeline
+      setSelectedEducation(institution);
+      setViewState('education');
     };
 
     const handleCompanyClick = (company: string) => {
       setSelectedCompany(company);
+      setViewState('company');
     };
 
     const handleConnectionUpdate = (field: string, value: string) => {
-      // Update person connection details
       console.log(`Updating ${field} to ${value} for person ${person.id}`);
     };
 

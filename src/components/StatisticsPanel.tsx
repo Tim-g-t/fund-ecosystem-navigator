@@ -1,9 +1,12 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Person, VCFund } from '../types/vc-data';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { CompanyDetailView } from './CompanyDetailView';
+import { EducationDetailView } from './EducationDetailView';
 import { 
   TrendingUp, 
   Users, 
@@ -12,7 +15,8 @@ import {
   Globe,
   Star,
   Award,
-  Network
+  Network,
+  ArrowLeft
 } from 'lucide-react';
 
 interface StatisticsPanelProps {
@@ -20,10 +24,82 @@ interface StatisticsPanelProps {
   funds: VCFund[];
 }
 
+type ViewState = 'main' | 'company' | 'education';
+
 export const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
   people,
   funds
 }) => {
+  const [viewState, setViewState] = useState<ViewState>('main');
+  const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
+  const [selectedEducation, setSelectedEducation] = useState<string | null>(null);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+
+  const resetView = () => {
+    setViewState('main');
+    setSelectedCompany(null);
+    setSelectedEducation(null);
+    setSelectedPersonId(null);
+  };
+
+  const handleCompanyClick = (company: string) => {
+    setSelectedCompany(company);
+    setViewState('company');
+  };
+
+  const handleEducationClick = (institution: string) => {
+    setSelectedEducation(institution);
+    setViewState('education');
+  };
+
+  // Show detailed views
+  if (viewState === 'company' && selectedCompany) {
+    const companyEmployees = people
+      .filter(person => 
+        person.previousRoles.some(role => role.company === selectedCompany) ||
+        person.currentFund === selectedCompany
+      )
+      .map(person => {
+        const role = person.previousRoles.find(r => r.company === selectedCompany);
+        const isCurrent = person.currentFund === selectedCompany;
+        return {
+          id: person.id,
+          name: person.name,
+          role: isCurrent ? person.currentRole : (role?.role || 'Unknown'),
+          startYear: isCurrent ? (new Date().getFullYear() - person.tenure) : (role?.startYear || 0),
+          endYear: isCurrent ? undefined : role?.endYear,
+          startMonth: role?.startMonth,
+          endMonth: role?.endMonth,
+          current: isCurrent || !role?.endYear
+        };
+      });
+
+    return (
+      <CompanyDetailView
+        companyName={selectedCompany}
+        employees={companyEmployees}
+        people={people}
+        onClose={resetView}
+        onPersonClick={(personId) => {
+          setSelectedPersonId(personId);
+        }}
+      />
+    );
+  }
+
+  if (viewState === 'education' && selectedEducation) {
+    return (
+      <EducationDetailView
+        institutionName={selectedEducation}
+        people={people}
+        onClose={resetView}
+        onPersonClick={(personId) => {
+          setSelectedPersonId(personId);
+        }}
+      />
+    );
+  }
+
   // Calculate power clusters
   const educationClusters = people.reduce((acc, person) => {
     person.education.forEach(edu => {
@@ -51,9 +127,13 @@ export const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
     .sort(([,a], [,b]) => b - a)
     .slice(0, 5);
 
-  // Fund growth rates
+  // Fund growth rates - now based on portfolio companies
   const topGrowthFunds = funds
-    .sort((a, b) => b.growthRate - a.growthRate)
+    .map(fund => ({
+      ...fund,
+      portfolioSize: fund.specificFunds?.reduce((acc, sf) => acc + sf.investments.length, 0) || 0
+    }))
+    .sort((a, b) => b.portfolioSize - a.portfolioSize)
     .slice(0, 5);
 
   // High influence individuals
@@ -74,6 +154,11 @@ export const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
   const avgTenure = people.reduce((sum, p) => sum + p.tenure, 0) / people.length;
   const avgTeamSize = funds.reduce((sum, f) => sum + f.teamSize, 0) / funds.length;
   const avgGrowthRate = funds.reduce((sum, f) => sum + f.growthRate, 0) / funds.length;
+
+  // Calculate total portfolio companies across all funds
+  const totalPortfolioCompanies = funds.reduce((acc, fund) => {
+    return acc + (fund.specificFunds?.reduce((sfAcc, sf) => sfAcc + sf.investments.length, 0) || 0);
+  }, 0);
 
   return (
     <div className="space-y-6">
@@ -106,13 +191,13 @@ export const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="h-4 w-4 text-orange-600" />
-            <span className="text-sm font-medium text-slate-600">Avg Growth</span>
+            <span className="text-sm font-medium text-slate-600">Portfolio Cos</span>
           </div>
-          <div className="text-2xl font-bold text-slate-900">{avgGrowthRate.toFixed(1)}%</div>
+          <div className="text-2xl font-bold text-slate-900">{totalPortfolioCompanies}</div>
         </Card>
       </div>
 
-      {/* Power Clusters */}
+      {/* Power Clusters - Now Clickable */}
       <div className="grid lg:grid-cols-2 gap-6">
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -123,7 +208,12 @@ export const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
             {topEducation.map(([institution, count]) => (
               <div key={institution} className="space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="font-medium">{institution}</span>
+                  <span 
+                    className="font-medium cursor-pointer text-blue-600 hover:text-blue-700"
+                    onClick={() => handleEducationClick(institution)}
+                  >
+                    {institution}
+                  </span>
                   <span className="text-slate-500">{count} alumni</span>
                 </div>
                 <Progress value={(count / people.length) * 100} className="h-2" />
@@ -141,7 +231,12 @@ export const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
             {topCompanies.map(([company, count]) => (
               <div key={company} className="space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="font-medium">{company}</span>
+                  <span 
+                    className="font-medium cursor-pointer text-green-600 hover:text-green-700"
+                    onClick={() => handleCompanyClick(company)}
+                  >
+                    {company}
+                  </span>
                   <span className="text-slate-500">{count} alumni</span>
                 </div>
                 <Progress value={(count / people.length) * 100} className="h-2" />
@@ -151,11 +246,11 @@ export const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
         </Card>
       </div>
 
-      {/* Growth Leaders */}
+      {/* Top Portfolio Funds */}
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-orange-600" />
-          Fastest Growing Funds (2-Year Team Growth)
+          Largest Portfolio Funds (by Company Count)
         </h3>
         <div className="space-y-4">
           {topGrowthFunds.map((fund, index) => (
@@ -170,8 +265,8 @@ export const StatisticsPanel: React.FC<StatisticsPanelProps> = ({
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-lg font-bold text-orange-600">+{fund.growthRate}%</div>
-                <div className="text-xs text-slate-500">growth rate</div>
+                <div className="text-lg font-bold text-orange-600">{fund.portfolioSize}</div>
+                <div className="text-xs text-slate-500">portfolio cos</div>
               </div>
             </div>
           ))}

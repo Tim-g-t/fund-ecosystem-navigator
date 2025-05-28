@@ -3,7 +3,7 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Building2, Users, Calendar, MapPin, X } from 'lucide-react';
+import { Building2, Users, Calendar, MapPin, X, TrendingUp, Star } from 'lucide-react';
 import { Person } from '../types/vc-data';
 import { Timeline } from './Timeline';
 
@@ -49,6 +49,19 @@ export const CompanyDetailView: React.FC<CompanyDetailViewProps> = ({
   const currentEmployees = employees.filter(emp => emp.current);
   const formerEmployees = employees.filter(emp => !emp.current);
 
+  // Calculate company insights
+  const avgTenure = employees.reduce((sum, emp) => {
+    const tenure = emp.current ? 
+      new Date().getFullYear() - emp.startYear : 
+      (emp.endYear || new Date().getFullYear()) - emp.startYear;
+    return sum + tenure;
+  }, 0) / employees.length;
+
+  const avgInfluence = employees.reduce((sum, emp) => {
+    const person = people.find(p => p.id === emp.id);
+    return sum + (person?.influence || 0);
+  }, 0) / employees.length;
+
   const handleTimelineClick = (entry: any) => {
     onPersonClick(entry.id);
   };
@@ -71,7 +84,7 @@ export const CompanyDetailView: React.FC<CompanyDetailViewProps> = ({
       </div>
 
       {/* Company Overview */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-blue-50 p-4 rounded-lg">
           <div className="flex items-center gap-2 mb-1">
             <Users className="h-4 w-4 text-blue-600" />
@@ -85,6 +98,40 @@ export const CompanyDetailView: React.FC<CompanyDetailViewProps> = ({
             <span className="text-sm font-medium text-slate-600">Former</span>
           </div>
           <div className="text-2xl font-bold text-slate-700">{formerEmployees.length}</div>
+        </div>
+        <div className="bg-purple-50 p-4 rounded-lg">
+          <div className="flex items-center gap-2 mb-1">
+            <Star className="h-4 w-4 text-purple-600" />
+            <span className="text-sm font-medium text-purple-600">Avg Influence</span>
+          </div>
+          <div className="text-2xl font-bold text-purple-700">{avgInfluence.toFixed(0)}</div>
+        </div>
+        <div className="bg-green-50 p-4 rounded-lg">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="h-4 w-4 text-green-600" />
+            <span className="text-sm font-medium text-green-600">Avg Tenure</span>
+          </div>
+          <div className="text-2xl font-bold text-green-700">{avgTenure.toFixed(1)}y</div>
+        </div>
+      </div>
+
+      {/* Team Members by Position */}
+      <div className="mb-6">
+        <h3 className="font-semibold mb-3">Team by Position</h3>
+        <div className="space-y-2">
+          {Object.entries(
+            employees.reduce((acc, emp) => {
+              acc[emp.role] = (acc[emp.role] || 0) + 1;
+              return acc;
+            }, {} as Record<string, number>)
+          )
+            .sort(([,a], [,b]) => b - a)
+            .map(([role, count]) => (
+              <div key={role} className="flex justify-between items-center p-2 bg-slate-50 rounded">
+                <span className="font-medium">{role}</span>
+                <Badge variant="outline">{count} {count === 1 ? 'person' : 'people'}</Badge>
+              </div>
+            ))}
         </div>
       </div>
 
@@ -106,6 +153,10 @@ export const CompanyDetailView: React.FC<CompanyDetailViewProps> = ({
           <Button variant="outline" size="sm">
             <Building2 className="h-4 w-4 mr-1" />
             Company Profile
+          </Button>
+          <Button variant="outline" size="sm">
+            <TrendingUp className="h-4 w-4 mr-1" />
+            Growth Analysis
           </Button>
         </div>
       </div>
