@@ -1,4 +1,3 @@
-
 import { Person, VCFund, PreviousRole, Education } from '../types/vc-data';
 
 interface CSVRow {
@@ -103,6 +102,15 @@ export const parseCSVData = (csvData: CSVRow[]): { people: Person[], funds: VCFu
       }
     }
 
+    // Parse invested companies from the special VC Fund columns
+    const investedCompanies: string[] = [];
+    for (let i = 1; i <= 10; i++) {
+      const fundColumn = row[`${i}${i === 1 ? 'st' : i === 2 ? 'nd' : i === 3 ? 'rd' : 'th'} VC Fund`];
+      if (fundColumn && fundColumn.trim() && fundColumn !== 'Unknown') {
+        investedCompanies.push(fundColumn.trim());
+      }
+    }
+
     // Calculate influence score based on available data
     const influence = Math.min(100, Math.max(0, 
       (parseInt(row.connections) || 0) / 10 + 
@@ -128,7 +136,8 @@ export const parseCSVData = (csvData: CSVRow[]): { people: Person[], funds: VCFu
       linkedinUrl: row.slug ? `https://linkedin.com/in/${row.slug}` : '',
       connections: [], // Will be populated based on shared experiences
       influence: Math.round(influence),
-      tenure: Math.max(0, tenure)
+      tenure: Math.max(0, tenure),
+      investedCompanies
     };
 
     people.push(person);

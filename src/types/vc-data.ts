@@ -13,6 +13,7 @@ export interface Person {
   connections: string[]; // IDs of other people
   influence: number; // 0-100 score
   tenure: number; // years at current fund
+  investedCompanies: string[]; // Companies they've invested in
 }
 
 export interface PreviousRole {
@@ -64,6 +65,7 @@ export interface FilterOptions {
   fundSize: string[];
   languages: string[];
   skills: string[];
+  investedCompanies: string[];
   minInfluence: number;
   minTenure: number;
 }

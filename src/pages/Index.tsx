@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { NetworkGraph } from '../components/NetworkGraph';
 import { FilterPanel } from '../components/FilterPanel';
@@ -38,6 +39,7 @@ const Index = () => {
     fundSize: [],
     languages: [],
     skills: [],
+    investedCompanies: [],
     minInfluence: 0,
     minTenure: 0
   });
@@ -63,6 +65,14 @@ const Index = () => {
           filters.previousCompanies.includes(role.company)
         );
         if (!hasCompany) return false;
+      }
+
+      // Invested companies filter
+      if (filters.investedCompanies.length > 0) {
+        const hasInvestedCompany = person.investedCompanies.some(company => 
+          filters.investedCompanies.includes(company)
+        );
+        if (!hasInvestedCompany) return false;
       }
 
       // Skills filter
@@ -148,6 +158,7 @@ const Index = () => {
       fundSize: [],
       languages: [],
       skills: [],
+      investedCompanies: [],
       minInfluence: 0,
       minTenure: 0
     });
@@ -273,6 +284,8 @@ const Index = () => {
             filters={filters}
             onFiltersChange={setFilters}
             onClearFilters={clearFilters}
+            people={currentPeople}
+            funds={currentFunds}
           />
         </div>
 

@@ -43,29 +43,29 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
 
   // Initialize nodes and edges
   useEffect(() => {
-    const fundNodes: Node[] = funds.map(fund => ({
+    const fundNodes: Node[] = funds.map((fund, index) => ({
       id: fund.id,
-      x: Math.random() * 800,
-      y: Math.random() * 600,
+      x: 200 + (index % 5) * 120, // More structured positioning
+      y: 150 + Math.floor(index / 5) * 100,
       vx: 0,
       vy: 0,
       type: 'fund',
       name: fund.name,
       influence: fund.influenceScore,
-      size: Math.max(20, fund.teamSize / 5),
+      size: Math.max(15, Math.min(30, fund.teamSize * 3)), // Limited size range
       connections: fund.currentTeam
     }));
 
-    const personNodes: Node[] = people.map(person => ({
+    const personNodes: Node[] = people.map((person, index) => ({
       id: person.id,
-      x: Math.random() * 800,
-      y: Math.random() * 600,
+      x: 400 + (index % 8) * 60, // More structured positioning
+      y: 200 + Math.floor(index / 8) * 50,
       vx: 0,
       vy: 0,
       type: 'person',
       name: person.name,
       influence: person.influence,
-      size: Math.max(8, person.influence / 10),
+      size: Math.max(6, Math.min(12, person.influence / 8)), // Limited size range
       connections: person.connections
     }));
 
@@ -77,7 +77,8 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
 
     // Add fund-person connections
     people.forEach(person => {
-      const fund = funds.find(f => f.id === person.currentFund);
+      const fundId = person.currentFund.toLowerCase().replace(/\s+/g, '-');
+      const fund = funds.find(f => f.id === fundId);
       if (fund) {
         networkEdges.push({
           source: fund.id,
@@ -91,33 +92,43 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
     setEdges(networkEdges);
   }, [funds, people, connections]);
 
-  // Force simulation
+  // Gentler force simulation
   useEffect(() => {
     if (nodes.length === 0) return;
 
+    let animationId: number;
+    let frameCount = 0;
+
     const animate = () => {
+      frameCount++;
+      
+      // Reduce animation frequency and intensity after initial frames
+      if (frameCount > 300) {
+        return; // Stop animation after stabilization
+      }
+
       setNodes(prevNodes => {
         const newNodes = [...prevNodes];
+        const dampening = Math.max(0.8, 1 - frameCount / 300); // Gradual dampening
         
-        // Apply forces
         newNodes.forEach(node => {
-          // Center force
+          // Much gentler center force
           const centerX = 400;
           const centerY = 300;
-          const centerForce = 0.01;
+          const centerForce = 0.001 * dampening;
           node.vx += (centerX - node.x) * centerForce;
           node.vy += (centerY - node.y) * centerForce;
 
-          // Repulsion between nodes
+          // Gentler repulsion between nodes
           newNodes.forEach(other => {
             if (node.id !== other.id) {
               const dx = node.x - other.x;
               const dy = node.y - other.y;
               const distance = Math.sqrt(dx * dx + dy * dy);
-              const minDistance = node.size + other.size + 10;
+              const minDistance = node.size + other.size + 20;
               
               if (distance < minDistance && distance > 0) {
-                const force = (minDistance - distance) * 0.1;
+                const force = (minDistance - distance) * 0.01 * dampening;
                 const fx = (dx / distance) * force;
                 const fy = (dy / distance) * force;
                 node.vx += fx;
@@ -126,25 +137,33 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
             }
           });
 
-          // Apply velocity with damping
-          node.vx *= 0.95;
-          node.vy *= 0.95;
-          node.x += node.vx;
-          node.y += node.vy;
+          // Strong velocity damping
+          node.vx *= 0.9;
+          node.vy *= 0.9;
+          
+          // Only apply velocity if it's significant
+          if (Math.abs(node.vx) > 0.1 || Math.abs(node.vy) > 0.1) {
+            node.x += node.vx;
+            node.y += node.vy;
+          }
 
           // Boundary constraints
-          node.x = Math.max(node.size, Math.min(800 - node.size, node.x));
-          node.y = Math.max(node.size, Math.min(600 - node.size, node.y));
+          node.x = Math.max(node.size + 10, Math.min(790 - node.size, node.x));
+          node.y = Math.max(node.size + 10, Math.min(590 - node.size, node.y));
         });
 
         return newNodes;
       });
 
-      requestAnimationFrame(animate);
+      if (frameCount < 300) {
+        animationId = requestAnimationFrame(animate);
+      }
     };
 
-    const animationId = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animationId);
+    animationId = requestAnimationFrame(animate);
+    return () => {
+      if (animationId) cancelAnimationFrame(animationId);
+    };
   }, [nodes.length]);
 
   // Render canvas
@@ -164,8 +183,8 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
       const targetNode = nodes.find(n => n.id === edge.target);
       
       if (sourceNode && targetNode) {
-        ctx.strokeStyle = `rgba(99, 102, 241, ${edge.strength * 0.6})`;
-        ctx.lineWidth = edge.strength * 3;
+        ctx.strokeStyle = `rgba(99, 102, 241, ${edge.strength * 0.4})`;
+        ctx.lineWidth = edge.strength * 2;
         ctx.beginPath();
         ctx.moveTo(sourceNode.x, sourceNode.y);
         ctx.lineTo(targetNode.x, targetNode.y);
@@ -182,7 +201,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
         // Fund nodes - hexagonal
         ctx.fillStyle = isSelected ? '#fbbf24' : '#1e40af';
         ctx.strokeStyle = isHovered ? '#fbbf24' : '#1e3a8a';
-        ctx.lineWidth = isSelected ? 4 : 2;
+        ctx.lineWidth = isSelected ? 3 : 2;
         
         const sides = 6;
         const radius = node.size;
@@ -201,7 +220,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
         // Person nodes - circular
         ctx.fillStyle = isSelected ? '#fbbf24' : '#6366f1';
         ctx.strokeStyle = isHovered ? '#fbbf24' : '#4f46e5';
-        ctx.lineWidth = isSelected ? 3 : 1;
+        ctx.lineWidth = isSelected ? 2 : 1;
         
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.size, 0, 2 * Math.PI);
@@ -209,12 +228,15 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({
         ctx.stroke();
       }
 
-      // Draw labels for larger nodes or selected/hovered
-      if (node.size > 15 || isSelected || isHovered) {
+      // Draw labels for selected/hovered or larger nodes
+      if (isSelected || isHovered || node.size > 10) {
         ctx.fillStyle = '#1f2937';
-        ctx.font = `${Math.max(10, node.size / 3)}px Inter, sans-serif`;
+        ctx.font = `${Math.max(8, node.size / 2)}px Inter, sans-serif`;
         ctx.textAlign = 'center';
-        ctx.fillText(node.name, node.x, node.y + node.size + 15);
+        const maxLength = 15;
+        const displayName = node.name.length > maxLength ? 
+          node.name.substring(0, maxLength) + '...' : node.name;
+        ctx.fillText(displayName, node.x, node.y + node.size + 12);
       }
     });
   }, [nodes, edges, selectedNode, hoveredNode]);

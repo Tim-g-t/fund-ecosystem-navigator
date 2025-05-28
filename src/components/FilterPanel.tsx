@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { FilterOptions } from '../types/vc-data';
+import React, { useMemo } from 'react';
+import { FilterOptions, Person, VCFund } from '../types/vc-data';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,36 +11,67 @@ interface FilterPanelProps {
   filters: FilterOptions;
   onFiltersChange: (filters: FilterOptions) => void;
   onClearFilters: () => void;
+  people: Person[];
+  funds: VCFund[];
 }
-
-const EDUCATION_OPTIONS = [
-  'Stanford University', 'Harvard Business School', 'MIT', 'Wharton School', 
-  'INSEAD', 'London School of Economics', 'University of California, Berkeley'
-];
-
-const COMPANY_OPTIONS = [
-  'Google', 'Facebook', 'Goldman Sachs', 'McKinsey & Company', 'Uber', 
-  'First Round Capital', 'Kleiner Perkins', 'Accel Partners', 'Greylock Partners'
-];
-
-const GEOGRAPHY_OPTIONS = [
-  'United States', 'Europe', 'Asia', 'Latin America', 'Middle East', 'Africa'
-];
-
-const SECTOR_OPTIONS = [
-  'Enterprise Software', 'Consumer', 'Fintech', 'Healthcare', 'AI/ML', 
-  'Crypto', 'Climate Tech', 'Gaming', 'Marketplaces', 'B2B SaaS'
-];
-
-const FUND_SIZE_OPTIONS = [
-  '<$100M', '$100M-$500M', '$500M-$1B', '$1B-$5B', '$5B+'
-];
 
 export const FilterPanel: React.FC<FilterPanelProps> = ({
   filters,
   onFiltersChange,
-  onClearFilters
+  onClearFilters,
+  people,
+  funds
 }) => {
+  // Generate dynamic filter options from real data
+  const educationOptions = useMemo(() => {
+    const institutions = new Set<string>();
+    people.forEach(person => {
+      person.education.forEach(edu => {
+        if (edu.institution && edu.institution !== 'Unknown') {
+          institutions.add(edu.institution);
+        }
+      });
+    });
+    return Array.from(institutions).slice(0, 20); // Limit to 20 most common
+  }, [people]);
+
+  const companyOptions = useMemo(() => {
+    const companies = new Set<string>();
+    people.forEach(person => {
+      person.previousRoles.forEach(role => {
+        if (role.company && role.company !== 'Unknown') {
+          companies.add(role.company);
+        }
+      });
+    });
+    return Array.from(companies).slice(0, 20); // Limit to 20 most common
+  }, [people]);
+
+  const investedCompanyOptions = useMemo(() => {
+    const companies = new Set<string>();
+    people.forEach(person => {
+      person.investedCompanies.forEach(company => {
+        if (company && company !== 'Unknown') {
+          companies.add(company);
+        }
+      });
+    });
+    return Array.from(companies).slice(0, 15); // Limit to 15 most common
+  }, [people]);
+
+  const GEOGRAPHY_OPTIONS = [
+    'United States', 'Europe', 'Asia', 'Latin America', 'Middle East', 'Africa'
+  ];
+
+  const SECTOR_OPTIONS = [
+    'Enterprise Software', 'Consumer', 'Fintech', 'Healthcare', 'AI/ML', 
+    'Crypto', 'Climate Tech', 'Gaming', 'Marketplaces', 'B2B SaaS'
+  ];
+
+  const FUND_SIZE_OPTIONS = [
+    '<$100M', '$100M-$500M', '$500M-$1B', '$1B-$5B', '$5B+'
+  ];
+
   const updateFilter = (key: keyof FilterOptions, value: any) => {
     onFiltersChange({ ...filters, [key]: value });
   };
@@ -62,6 +93,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       filters.fundSize.length > 0 ||
       filters.languages.length > 0 ||
       filters.skills.length > 0 ||
+      filters.investedCompanies.length > 0 ||
       filters.minInfluence > 0 ||
       filters.minTenure > 0
     );
@@ -83,38 +115,61 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       </div>
 
       {/* Education */}
-      <div className="mb-6">
-        <h3 className="font-medium mb-3 text-slate-900">Education</h3>
-        <div className="flex flex-wrap gap-2">
-          {EDUCATION_OPTIONS.map(school => (
-            <Badge
-              key={school}
-              variant={filters.education.includes(school) ? "default" : "outline"}
-              className="cursor-pointer hover:bg-blue-100"
-              onClick={() => toggleArrayFilter('education', school)}
-            >
-              {school}
-            </Badge>
-          ))}
+      {educationOptions.length > 0 && (
+        <div className="mb-6">
+          <h3 className="font-medium mb-3 text-slate-900">Education</h3>
+          <div className="flex flex-wrap gap-2">
+            {educationOptions.map(school => (
+              <Badge
+                key={school}
+                variant={filters.education.includes(school) ? "default" : "outline"}
+                className="cursor-pointer hover:bg-blue-100 text-xs"
+                onClick={() => toggleArrayFilter('education', school)}
+              >
+                {school.length > 25 ? school.substring(0, 25) + '...' : school}
+              </Badge>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Previous Companies */}
-      <div className="mb-6">
-        <h3 className="font-medium mb-3 text-slate-900">Previous Companies</h3>
-        <div className="flex flex-wrap gap-2">
-          {COMPANY_OPTIONS.map(company => (
-            <Badge
-              key={company}
-              variant={filters.previousCompanies.includes(company) ? "default" : "outline"}
-              className="cursor-pointer hover:bg-blue-100"
-              onClick={() => toggleArrayFilter('previousCompanies', company)}
-            >
-              {company}
-            </Badge>
-          ))}
+      {companyOptions.length > 0 && (
+        <div className="mb-6">
+          <h3 className="font-medium mb-3 text-slate-900">Previous Companies</h3>
+          <div className="flex flex-wrap gap-2">
+            {companyOptions.map(company => (
+              <Badge
+                key={company}
+                variant={filters.previousCompanies.includes(company) ? "default" : "outline"}
+                className="cursor-pointer hover:bg-blue-100 text-xs"
+                onClick={() => toggleArrayFilter('previousCompanies', company)}
+              >
+                {company.length > 20 ? company.substring(0, 20) + '...' : company}
+              </Badge>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Invested In */}
+      {investedCompanyOptions.length > 0 && (
+        <div className="mb-6">
+          <h3 className="font-medium mb-3 text-slate-900">Invested In</h3>
+          <div className="flex flex-wrap gap-2">
+            {investedCompanyOptions.map(company => (
+              <Badge
+                key={company}
+                variant={filters.investedCompanies.includes(company) ? "default" : "outline"}
+                className="cursor-pointer hover:bg-green-100 text-xs"
+                onClick={() => toggleArrayFilter('investedCompanies', company)}
+              >
+                {company.length > 20 ? company.substring(0, 20) + '...' : company}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Geography */}
       <div className="mb-6">
